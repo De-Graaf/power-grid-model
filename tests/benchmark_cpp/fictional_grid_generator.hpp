@@ -326,7 +326,7 @@ class FictionalGridGenerator {
                 line.id = id_gen_++;
                 line.from_node = prev_node_id;
                 line.to_node = current_node_id;
-                scale_cable(line, scaling_gen(gen_));
+                scale_cable(line, scaling_gen(gen_), gen_);
                 input_.line.push_back(line);
                 // generate lv grid
                 if (lv_gen(gen_)) {
@@ -363,7 +363,7 @@ class FictionalGridGenerator {
                 line.from_node = *it;
                 line.to_node = *(it + 1);
                 // scale
-                scale_cable(line, scaling_gen(gen_));
+                scale_cable(line, scaling_gen(gen_), gen_);
                 input_.line.push_back(line);
             }
         }
@@ -476,14 +476,14 @@ class FictionalGridGenerator {
                 main_line.id = id_gen_++;
                 main_line.from_node = prev_main_node_id;
                 main_line.to_node = current_main_node_id;
-                scale_cable(main_line, main_cable_gen(gen_));
+                scale_cable(main_line, main_cable_gen(gen_), gen_);
                 input_.line.push_back(main_line);
                 // connection line
                 LineInput connection_line = lv_connection_line;
                 connection_line.id = id_gen_++;
                 connection_line.from_node = current_main_node_id;
                 connection_line.to_node = connection_node_id;
-                scale_cable(connection_line, connection_cable_gen(gen_));
+                scale_cable(connection_line, connection_cable_gen(gen_), gen_);
                 input_.line.push_back(connection_line);
                 // asym load
                 AsymLoadGenInput asym_load = lv_asym_load;
@@ -516,7 +516,7 @@ class FictionalGridGenerator {
                 line.from_node = *it;
                 line.to_node = *(it + 1);
                 // scale
-                scale_cable(line, main_cable_gen(gen_));
+                scale_cable(line, main_cable_gen(gen_), gen_);
                 input_.line.push_back(line);
             }
         }
@@ -632,13 +632,30 @@ class FictionalGridGenerator {
         });
     }
 
-    static void scale_cable(LineInput& line, double cable_ratio) {
-        line.r1 *= cable_ratio;
-        line.x1 *= cable_ratio;
-        line.c1 *= cable_ratio;
-        line.r0 *= cable_ratio;
-        line.x0 *= cable_ratio;
-        line.c0 *= cable_ratio;
+    // static void scale_cable(LineInput& line, double cable_ratio) {
+    //     line.r1 *= cable_ratio;
+    //     line.x1 *= cable_ratio;
+    //     line.c1 *= cable_ratio;
+    //     line.r0 *= cable_ratio;
+    //     line.x0 *= cable_ratio;
+    //     line.c0 *= cable_ratio;
+    // }
+
+    // Change the function signature to accept the generator
+    static void scale_cable(LineInput& line, double cable_ratio, std::mt19937_64& gen) {
+        // 1. Define a distribution for variety (e.g., +/- 15% variation)
+        // This ensures no two lines have the same R/X ratio even if they have the same length.
+        std::uniform_real_distribution<double> jitter(0.85, 1.15);
+    
+        // 2. Apply independent jitter to each parameter
+        line.r1 *= (cable_ratio * jitter(gen));
+        line.x1 *= (cable_ratio * jitter(gen));
+        line.c1 *= (cable_ratio * jitter(gen));
+        
+        // 3. Zero-sequence parameters (critical for asymmetric observability)
+        line.r0 *= (cable_ratio * jitter(gen));
+        line.x0 *= (cable_ratio * jitter(gen));
+        line.c0 *= (cable_ratio * jitter(gen));
     }
 
     template <class T, class U>
